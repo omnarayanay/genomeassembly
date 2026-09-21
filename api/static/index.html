@@ -456,10 +456,10 @@
                 const header = card.querySelector('h2');
                 if (header) {
                     const title = header.textContent;
-                    const isPreAssembly = title.includes('Quality Control') || 
+                    const isPreAssembly = title.includes('Raw Read QC') || 
                                           title.includes('Trimming') || 
                                           title.includes('Contamination') || 
-                                          title.includes('Assembly & Polishing') || 
+                                          title.includes('Assembly') || 
                                           title.includes('Scaffolding');
                     if (isPreAssembly) {
                         card.style.display = isAssembly ? 'none' : 'block';
