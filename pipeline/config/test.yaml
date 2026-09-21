@@ -1,0 +1,23 @@
+run_id: "test_run"
+samples:
+  - sample_id: "sample_01"
+    read_type: "long"
+    read1: null
+    read2: null
+    long_reads: "tests/fixtures/sample_01_long.fastq.gz"
+    expected_genome_size: "5m"
+    organism_type: "bacterial"
+
+params:
+  fastp:
+    qualified_quality_phred: 15
+  flye:
+    iterations: 1
+  quast:
+    min_contig: 500
+  busco:
+    lineage: "bacteria_odb10"
+
+resources:
+  threads: 4
+  mem_mb: 8192

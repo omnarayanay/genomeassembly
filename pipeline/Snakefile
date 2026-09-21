@@ -1,0 +1,114 @@
+configfile: "config/config.template.yaml"
+
+RUN_ID = config.get("run_id", "test_run")
+SAMPLES = config.get("samples", [])
+SAMPLE_DICT = {s["sample_id"]: s for s in SAMPLES}
+SAMPLE_IDS = list(SAMPLE_DICT.keys())
+SHORT_SAMPLES = [s["sample_id"] for s in SAMPLES if s.get("read_type") in ["short", "hybrid"]]
+LONG_SAMPLES = [s["sample_id"] for s in SAMPLES if s.get("read_type") in ["long", "hybrid"]]
+
+def get_read1(wildcards):
+    return SAMPLE_DICT[wildcards.sample_id].get("read1")
+
+def get_read2(wildcards):
+    return SAMPLE_DICT[wildcards.sample_id].get("read2")
+
+def get_long_reads(wildcards):
+    return SAMPLE_DICT[wildcards.sample_id].get("long_reads")
+
+def get_all_qc_outputs(wildcards):
+    outputs = []
+    # Short reads get FastQC
+    if SHORT_SAMPLES:
+        outputs.extend(expand("data/results/{run_id}/01_qc/{sample_id}_R1_fastqc.html", run_id=RUN_ID, sample_id=SHORT_SAMPLES))
+        outputs.extend(expand("data/results/{run_id}/01_qc/{sample_id}_R2_fastqc.html", run_id=RUN_ID, sample_id=SHORT_SAMPLES))
+    # Long reads get NanoPlot
+    if LONG_SAMPLES:
+        outputs.extend(expand("data/results/{run_id}/01_qc/{sample_id}_nanoplot/NanoPlot-report.html", run_id=RUN_ID, sample_id=LONG_SAMPLES))
+    return outputs
+
+def get_final_targets(wildcards):
+    targets = []
+    tools = config.get("params", {}).get("selected_tools", [])
+    starting_point = config.get("params", {}).get("starting_point", "reads")
+    
+    if starting_point == "reads":
+        targets.extend(get_all_qc_outputs(wildcards))
+        targets.extend(expand("data/results/{run_id}/09_report/multiqc_report.html", run_id=RUN_ID))
+    
+    # Step 7: Validation
+    if "quast" in tools:
+        targets.extend(expand("data/results/{run_id}/06_validation/quast/{sample_id}_report.tsv", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "busco" in tools:
+        targets.extend(expand("data/results/{run_id}/06_validation/busco/{sample_id}_short_summary.txt", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+        
+    # Step 8: Annotation (Core)
+    if "repeatmasker" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/repeatmasker/{sample_id}_scaffold.fasta.masked", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "prokka" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/prokka/{sample_id}.gff", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "bakta" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/bakta/{sample_id}.gff3", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "dfast" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/dfast/{sample_id}/genome.gff", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "augustus" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/augustus/{sample_id}.gff", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "funannotate" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/funannotate/{sample_id}/predict_results/{sample_id}.gff3", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "braker" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/braker/{sample_id}/braker.gff3", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+
+    # Step 8: Functional & Pathways
+    if "eggnog" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/eggnog/{sample_id}.emapper.annotations", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "interproscan" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/interproscan/{sample_id}.tsv", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "kofamscan" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/kofamscan/{sample_id}_kofam.txt", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "dbcan" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/dbcan/{sample_id}/overview.txt", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    
+    # Step 8: AMR & Plasmids
+    if "abricate" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/abricate/{sample_id}_amr.txt", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "amrfinder" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/amrfinder/{sample_id}_amrfinder.tsv", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "plasmidfinder" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/plasmidfinder/{sample_id}/results_tab.tsv", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "phigaro" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/phigaro/{sample_id}.phigaro.txt", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "crispr" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/crisprcasfinder/{sample_id}/TSV/Crisprs_report.tsv", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+
+    # Step 8: Specialized
+    if "antismash" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/antismash/{sample_id}/index.html", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "roary" in tools:
+        targets.extend(expand("data/results/{run_id}/07_annotation/roary/summary_statistics.txt", run_id=RUN_ID))
+        
+    # Step 9: Identification
+    if "blastn" in tools:
+        targets.extend(expand("data/results/{run_id}/08_identification/blastn/{sample_id}_blastn.xml", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "blastp" in tools:
+        targets.extend(expand("data/results/{run_id}/08_identification/blastp/{sample_id}_blastp.xml", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+    if "blastx" in tools:
+        targets.extend(expand("data/results/{run_id}/08_identification/blastx/{sample_id}_blastx.xml", run_id=RUN_ID, sample_id=SAMPLE_IDS))
+        
+    return targets
+
+rule all:
+    input:
+        get_final_targets
+
+include: "rules/qc.smk"
+include: "rules/trim.smk"
+include: "rules/screen.smk"
+include: "rules/assemble.smk"
+include: "rules/assemble_extra.smk"
+include: "rules/scaffold.smk"
+include: "rules/validate.smk"
+include: "rules/report.smk"
+include: "rules/annotate.smk"
+include: "rules/annotate_extra.smk"
+include: "rules/identify.smk"
+

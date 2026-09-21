@@ -1,0 +1,14 @@
+executor: slurm
+jobs: 100
+max-jobs-per-second: 10
+max-status-checks-per-second: 10
+latency-wait: 60
+keep-going: True
+rerun-incomplete: True
+printshellcmds: True
+
+default-resources:
+  slurm_partition: "compute"
+  slurm_account: "default"
+  mem_mb: 4096
+  runtime: 60

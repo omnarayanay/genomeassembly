@@ -1,0 +1,21 @@
+params:
+  busco:
+    lineage: bacteria_odb10
+  fastp:
+    qualified_quality_phred: 15
+  flye:
+    iterations: 1
+  quast:
+    min_contig: 500
+resources:
+  mem_mb: 8192
+  threads: 4
+run_id: 18a3e20a-26da-4659-9173-8c2a2538a999
+samples:
+- expected_genome_size: 5m
+  long_reads: null
+  organism_type: bacterial
+  read1: data/raw/Pn01_R1.fastq.gz
+  read2: data/raw/Pn01_R2.fastq.gz
+  read_type: short
+  sample_id: sample_01SSRHEFH

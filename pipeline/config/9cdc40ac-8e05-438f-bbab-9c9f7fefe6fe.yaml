@@ -1,0 +1,26 @@
+params:
+  blast:
+    taxid: '4910'
+  busco:
+    lineage: bacteria_odb10
+  fastp:
+    qualified_quality_phred: 15
+  flye:
+    iterations: 1
+  quast:
+    min_contig: 500
+  selected_tools: []
+  starting_point: assembly
+resources:
+  mem_mb: 8192
+  threads: 4
+run_id: 9cdc40ac-8e05-438f-bbab-9c9f7fefe6fe
+samples:
+- assembly_fasta: data/raw/sample_01SSRHEFH_assembly.fasta
+  expected_genome_size: 5m
+  long_reads: null
+  organism_type: bacterial
+  read1: null
+  read2: null
+  read_type: short
+  sample_id: test

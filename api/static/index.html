@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genome Assembly Pipeline Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .step-card { transition: all 0.3s ease; }
+        .step-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+    <div class="max-w-7xl mx-auto py-10 px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 mb-2">🧬 Pipeline Builder</h1>
+            <p class="text-slate-500">Configure your genome assembly workflow chronologically</p>
+        </header>
+
+        <form id="pipeline-form" class="space-y-8">
+            <!-- Step 1: Starting Point -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">1</div>
+                    <h2 class="text-xl font-bold">Pipeline Starting Point</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="border-2 border-slate-200 rounded-lg p-4 cursor-pointer hover:border-indigo-400 focus-within:border-indigo-500">
+                        <input type="radio" name="starting_point" value="reads" class="mr-2" checked onchange="updateUI()">
+                        <span class="font-semibold">Raw Reads (FASTQ)</span>
+                        <p class="text-sm text-slate-500 mt-1">Start from scratch: QC, Trim, Assemble</p>
+                    </label>
+                    <label class="border-2 border-slate-200 rounded-lg p-4 cursor-pointer hover:border-indigo-400 focus-within:border-indigo-500">
+                        <input type="radio" name="starting_point" value="assembly" class="mr-2" onchange="updateUI()">
+                        <span class="font-semibold">Assembled Genome (FASTA)</span>
+                        <p class="text-sm text-slate-500 mt-1">Skip assembly: Start at Validation/Annotation</p>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 1.5: Sequencing Technology (Only for reads) -->
+            <div id="step-seq-tech" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">2</div>
+                    <h2 class="text-xl font-bold">Sequencing Technology</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label class="border-2 border-slate-200 rounded-lg p-4 cursor-pointer hover:border-indigo-400 focus-within:border-indigo-500">
+                        <input type="radio" name="read_type" value="short" class="mr-2" checked onchange="updateUI()">
+                        <span class="font-semibold">Illumina (Short)</span>
+                        <p class="text-sm text-slate-500 mt-1">High accuracy, short fragments</p>
+                    </label>
+                    <label class="border-2 border-slate-200 rounded-lg p-4 cursor-pointer hover:border-indigo-400 focus-within:border-indigo-500">
+                        <input type="radio" name="read_type" value="long" class="mr-2" onchange="updateUI()">
+                        <span class="font-semibold">Nanopore (Long)</span>
+                        <p class="text-sm text-slate-500 mt-1">Lower accuracy, long fragments</p>
+                    </label>
+                    <label class="border-2 border-slate-200 rounded-lg p-4 cursor-pointer hover:border-indigo-400 focus-within:border-indigo-500">
+                        <input type="radio" name="read_type" value="hybrid" class="mr-2" onchange="updateUI()">
+                        <span class="font-semibold">Hybrid (Short + Long)</span>
+                        <p class="text-sm text-slate-500 mt-1">Best of both worlds</p>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 2: Data Input -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">3</div>
+                    <h2 class="text-xl font-bold">Data Input</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Sample ID</label>
+                        <input type="text" id="sample-id" value="sample_01" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    
+                    <!-- For Reads -->
+                    <div id="short-reads-input" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Read 1 (FASTQ)</label>
+                            <input type="file" id="read1" accept=".fastq,.fq,.gz" class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Read 2 (FASTQ)</label>
+                            <input type="file" id="read2" accept=".fastq,.fq,.gz" class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm">
+                        </div>
+                    </div>
+                    <div id="long-reads-input" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Long Reads (FASTQ/BAM)</label>
+                            <input type="file" id="long-reads" accept=".fastq,.fq,.gz,.bam" class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- For Assembly -->
+                    <div id="assembly-input" class="hidden col-span-1 md:col-span-2 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Assembled Genome (FASTA)</label>
+                            <input type="file" id="assembly-fasta" accept=".fasta,.fa,.fna,.gz" class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm">
+                            <p class="text-xs text-slate-500 mt-1">This will be directly injected into the pipeline, skipping QC and Assembly steps.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Raw QC -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">3</div>
+                    <h2 class="text-xl font-bold">Raw Read QC</h2>
+                </div>
+                <div class="space-y-3" id="qc-options">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Step 3: Trimming & Filtering -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">4</div>
+                    <h2 class="text-xl font-bold">Trimming & Filtering</h2>
+                </div>
+                <div class="space-y-3" id="trim-options">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Step 4: Contamination Screening -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">5</div>
+                    <h2 class="text-xl font-bold">Contamination Screening</h2>
+                </div>
+                <div class="space-y-3">
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-kraken2" value="kraken2" checked class="mr-3 text-indigo-600 focus:ring-indigo-500 h-5 w-5">
+                        <span class="font-medium">Kraken2 (Taxonomic classification)</span>
+                    </label>
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-fastq_screen" value="fastq_screen" class="mr-3 text-indigo-600 focus:ring-indigo-500 h-5 w-5">
+                        <span class="font-medium">FastQ Screen (Species composition)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 6: Assembly -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">6</div>
+                    <h2 class="text-xl font-bold">Assembly & Scaffolding</h2>
+                </div>
+                <div id="assembly-options" class="space-y-3">
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-flye" checked class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">Flye (De novo assembly)</span>
+                    </label>
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-ragtag" class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">RagTag (Optional Scaffolding)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 7: Validation -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">7</div>
+                    <h2 class="text-xl font-bold">Validation</h2>
+                </div>
+                <div class="space-y-3">
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-quast" checked class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">QUAST (Assembly Contiguity)</span>
+                    </label>
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <label class="flex items-center cursor-pointer hover:bg-slate-100 mb-2">
+                            <input type="checkbox" id="chk-busco" checked class="mr-3 text-indigo-600 h-5 w-5">
+                            <span class="font-medium">BUSCO (Genome Completeness)</span>
+                        </label>
+                        <div class="ml-8 mt-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Lineage Database:</label>
+                            <select id="busco_lineage" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                                <option value="bacteria_odb10">Bacteria (bacteria_odb10)</option>
+                                <option value="archaea_odb10">Archaea (archaea_odb10)</option>
+                                <option value="eukaryota_odb10">Eukaryota (eukaryota_odb10)</option>
+                                <option value="fungi_odb10">Fungi (fungi_odb10)</option>
+                                <option value="vertebrata_odb10">Vertebrata (vertebrata_odb10)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 8: Annotation & Downstream Analysis -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">8</div>
+                    <h2 class="text-xl font-bold">Annotation & Advanced Analysis</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Core Gene Prediction -->
+                    <div class="space-y-2">
+                        <h3 class="font-bold text-slate-700 border-b pb-1 mb-2 text-sm uppercase">Core Annotation</h3>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-repeatmasker" checked class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">RepeatMasker (Mask Repetitive Regions)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-prokka" checked class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Prokka (Rapid Gene Prediction)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-bakta" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Bakta (Comprehensive Bacterial)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-dfast" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">DFAST (DDBJ Fast Annotation)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-augustus" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Augustus (Eukaryotic Gene Prediction)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-funannotate" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Funannotate (Fungal/Eukaryotic)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-braker" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">BRAKER / MAKER (Eukaryotes)</span>
+                        </label>
+                    </div>
+
+                    <!-- Functional & Pathways -->
+                    <div class="space-y-2">
+                        <h3 class="font-bold text-slate-700 border-b pb-1 mb-2 text-sm uppercase">Functional & Pathways</h3>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-eggnog" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">EggNOG-mapper (Orthology)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-interproscan" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">InterProScan (Protein Domains)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-kofamscan" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">KofamScan (KEGG Pathways)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-dbcan" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">dbCAN (CAZymes/Carbohydrates)</span>
+                        </label>
+                    </div>
+
+                    <!-- AMR, Virulence & Mobile Elements -->
+                    <div class="space-y-2">
+                        <h3 class="font-bold text-slate-700 border-b pb-1 mb-2 text-sm uppercase">AMR, Plasmids & Phages</h3>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-abricate" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Abricate (AMR & Virulence)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-amrfinder" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">AMRFinderPlus (NCBI DB)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-plasmidfinder" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">PlasmidFinder (Replicons)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-phigaro" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Phigaro / Phaster (Prophages)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-crispr" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">CRISPRCasFinder (CRISPR Arrays)</span>
+                        </label>
+                    </div>
+
+                    <!-- Specialized & Comparative -->
+                    <div class="space-y-2">
+                        <h3 class="font-bold text-slate-700 border-b pb-1 mb-2 text-sm uppercase">Specialized & Comparative</h3>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-antismash" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">AntiSMASH (Biosynthetic Clusters)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" id="chk-roary" class="mr-3 text-indigo-600 h-4 w-4">
+                            <span class="text-sm font-medium">Roary / Panaroo (Pangenomics)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 9: Identification -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 step-card">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">9</div>
+                    <h2 class="text-xl font-bold">Identification (NCBI BLAST)</h2>
+                </div>
+                <div class="space-y-3">
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-blastn" class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">BLASTn (Search Nucleotides against NCBI 'nt' database)</span>
+                    </label>
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-blastp" class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">BLASTp (Search Proteins against NCBI 'nr' database)</span>
+                    </label>
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <label class="flex items-center cursor-pointer hover:bg-slate-100 mb-2">
+                            <input type="checkbox" id="chk-blastx" checked class="mr-3 text-indigo-600 h-5 w-5">
+                            <span class="font-medium">BLASTx (Predicted genes against Non-Redundant (nr) v5)</span>
+                        </label>
+                        <div class="ml-8 mt-2 space-y-2 text-sm text-slate-700">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="chk-omicsbox" checked class="mr-2 text-indigo-600 h-4 w-4">
+                                <span>Export format for OmicsBox (XML)</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="chk-taxfilter" checked class="mr-2 text-indigo-600 h-4 w-4" onchange="document.getElementById('tax-id-input').disabled = !this.checked">
+                                <span>Apply Taxonomy Filter (OmicsBox default parameters)</span>
+                            </label>
+                            <div class="ml-6 mt-1 flex items-center gap-2">
+                                <label class="text-xs text-slate-500 font-medium">Target TaxID / Organism:</label>
+                                <input type="text" id="tax-id-input" placeholder="e.g. 4910 (Kluyveromyces)" value="4910" class="border border-slate-300 rounded px-2 py-1 text-xs w-56 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" onclick="submitSimulation()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">
+                🚀 Launch Pipeline
+            </button>
+        </form>
+
+        </div>
+
+        <!-- Simulation Progress Right Column -->
+        <div class="lg:col-span-1">
+        <!-- Simulation Progress -->
+        <div id="simulation-box" class="mt-10 lg:mt-0 bg-slate-900 text-green-400 p-6 rounded-xl font-mono text-sm shadow-2xl sticky top-10 h-[calc(100vh-5rem)] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                <span class="text-slate-300 font-bold">Pipeline Execution Log</span>
+                <div class="flex items-center gap-3">
+                    <button id="stop-btn" onclick="stopPipeline()" class="hidden px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold transition-colors">🛑 STOP</button>
+                    <span id="sim-status" class="px-2 py-1 bg-slate-700 text-slate-300 rounded text-xs">READY</span>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div id="progress-container" class="hidden mb-4">
+                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                    <span id="progress-text">0 of 0 steps (0%) done</span>
+                    <span id="progress-time">Elapsed: 00:00</span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2">
+                    <div id="progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div id="config-summary" class="hidden mb-4 pb-3 border-b border-slate-700 text-yellow-300 text-xs">
+                <!-- Populated by JS -->
+            </div>
+            
+            <div id="log-output" class="space-y-1 flex-1 overflow-y-auto min-h-0">
+                <div class="text-slate-500">Waiting for pipeline to launch...</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        const tools = {
+            short: {
+                qc: [{id: 'fastqc', name: 'FastQC', checked: true}],
+                trim: [{id: 'fastp', name: 'fastp', checked: true}],
+                assembly: [
+                    {id: 'spades', name: 'SPAdes (De novo assembly)', checked: true},
+                    {id: 'skesa', name: 'SKESA (Faster, lower memory)', checked: false},
+                    {id: 'megahit', name: 'MEGAHIT (Large/Metagenomes)', checked: false}
+                ]
+            },
+            long: {
+                qc: [{id: 'nanoplot', name: 'NanoPlot', checked: true}],
+                trim: [
+                    {id: 'nanofilt', name: 'NanoFilt', checked: true},
+                    {id: 'chopper', name: 'Chopper', checked: true}
+                ],
+                assembly: [
+                    {id: 'flye', name: 'Flye (De novo assembly)', checked: true},
+                    {id: 'raven', name: 'Raven (Fast long-read assembly)', checked: false},
+                    {id: 'canu', name: 'Canu (High accuracy, slow)', checked: false}
+                ]
+            },
+            hybrid: {
+                qc: [
+                    {id: 'fastqc', name: 'FastQC (Short)', checked: true},
+                    {id: 'nanoplot', name: 'NanoPlot (Long)', checked: true}
+                ],
+                trim: [
+                    {id: 'fastp', name: 'fastp (Short)', checked: true},
+                    {id: 'nanofilt', name: 'NanoFilt (Long)', checked: true},
+                    {id: 'chopper', name: 'Chopper (Long)', checked: true}
+                ],
+                assembly: [
+                    {id: 'unicycler', name: 'Unicycler (Best for Hybrid/Circular)', checked: true},
+                    {id: 'spades', name: 'hybridSPAdes (Highly contiguous)', checked: false},
+                    {id: 'masurca', name: 'MaSuRCA (Complex genomes)', checked: false}
+                ]
+            }
+        };
+
+        function updateUI() {
+            // Get starting point
+            const startPoint = document.querySelector('input[name="starting_point"]:checked').value;
+            const isAssembly = startPoint === 'assembly';
+
+            // Toggle Sequencing Technology step
+            document.getElementById('step-seq-tech').style.display = isAssembly ? 'none' : 'block';
+
+            // Toggle Data Inputs
+            const readType = document.querySelector('input[name="read_type"]:checked').value;
+            const shortReadsDiv = document.getElementById('short-reads-input');
+            const longReadsDiv = document.getElementById('long-reads-input');
+            const assemblyDiv = document.getElementById('assembly-input');
+
+            if (isAssembly) {
+                shortReadsDiv.classList.add('hidden');
+                longReadsDiv.classList.add('hidden');
+                assemblyDiv.classList.remove('hidden');
+            } else {
+                assemblyDiv.classList.add('hidden');
+                if (readType === 'short') {
+                    shortReadsDiv.classList.remove('hidden');
+                    longReadsDiv.classList.add('hidden');
+                } else if (readType === 'long') {
+                    shortReadsDiv.classList.add('hidden');
+                    longReadsDiv.classList.remove('hidden');
+                } else {
+                    shortReadsDiv.classList.remove('hidden');
+                    longReadsDiv.classList.remove('hidden');
+                }
+            }
+
+            // Hide Pipeline Steps 2-6 (QC, Trim, Screen, Assembly, Scaffolding)
+            const stepCards = document.querySelectorAll('.step-card');
+            // Assuming steps 2-6 are the 3rd, 4th, 5th, 6th, and 7th elements with the class 'step-card'
+            // We can match them by their internal <h2> text
+            stepCards.forEach(card => {
+                const header = card.querySelector('h2');
+                if (header) {
+                    const title = header.textContent;
+                    const isPreAssembly = title.includes('Quality Control') || 
+                                          title.includes('Trimming') || 
+                                          title.includes('Contamination') || 
+                                          title.includes('Assembly & Polishing') || 
+                                          title.includes('Scaffolding');
+                    if (isPreAssembly) {
+                        card.style.display = isAssembly ? 'none' : 'block';
+                        // Also uncheck tools in these steps if hiding them so they aren't executed
+                        if (isAssembly) {
+                            card.querySelectorAll('input[type="checkbox"]').forEach(chk => chk.checked = false);
+                        }
+                    }
+                }
+            });
+            
+            // Update QC
+            document.getElementById('qc-options').innerHTML = tools[readType].qc.map(t => `
+                <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-white cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" id="chk-${t.id}" name="qc" value="${t.id}" ${t.checked ? 'checked' : ''} class="mr-3 text-indigo-600 h-5 w-5 cursor-pointer">
+                    <span class="font-medium">${t.name}</span>
+                </label>
+            `).join('');
+
+            // Update Trim
+            document.getElementById('trim-options').innerHTML = tools[readType].trim.map(t => `
+                <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                    <input type="checkbox" id="chk-${t.id}" ${t.checked ? 'checked' : ''} class="mr-3 text-indigo-600 h-5 w-5">
+                    <span class="font-medium">${t.name}</span>
+                </label>
+            `).join('');
+
+            // Update Assembly
+            if (document.getElementById('assembly-options')) {
+                document.getElementById('assembly-options').innerHTML = tools[readType].assembly.map(t => `
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100">
+                        <input type="checkbox" id="chk-${t.id}" ${t.checked ? 'checked' : ''} class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">${t.name}</span>
+                    </label>
+                `).join('') + `
+                    <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 mt-3">
+                        <input type="checkbox" id="chk-ragtag" class="mr-3 text-indigo-600 h-5 w-5">
+                        <span class="font-medium">RagTag (Optional Scaffolding)</span>
+                    </label>
+                `;
+            }
+            
+            // Add MultiQC universally
+            document.getElementById('qc-options').innerHTML += `
+                <label class="flex items-center p-3 border border-slate-200 rounded-lg bg-white cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" id="chk-multiqc" checked class="mr-3 text-indigo-600 h-5 w-5 cursor-pointer">
+                    <span class="font-medium">MultiQC (Aggregation)</span>
+                </label>
+            `;
+            
+            // Update Assembly label
+            const flyeChk = document.getElementById('chk-flye');
+            if (flyeChk) {
+                flyeChk.nextElementSibling.textContent = readType === 'long' ? 'Flye (De novo assembly)' : 'SPAdes (De novo assembly)';
+            }
+        }
+
+        // Initialize UI
+        updateUI();
+
+        async function submitSimulation() {
+            // Get starting point
+            const startPoint = document.querySelector('input[name="starting_point"]:checked').value;
+            const readType = document.querySelector('input[name="read_type"]:checked').value;
+            
+            // Show terminal
+            const simBox = document.getElementById('simulation-box');
+            const logOut = document.getElementById('log-output');
+            const statusBox = document.getElementById('sim-status');
+            
+            logOut.innerHTML = '';
+            statusBox.textContent = 'RUNNING';
+            statusBox.className = 'px-2 py-1 bg-indigo-900 text-indigo-200 rounded text-xs animate-pulse';
+
+            const addLog = (msg, delay) => new Promise(resolve => {
+                setTimeout(() => {
+                    const p = document.createElement('div');
+                    p.textContent = `> ${msg}`;
+                    logOut.appendChild(p);
+                    logOut.scrollTop = logOut.scrollHeight;
+                    resolve();
+                }, delay);
+            });
+
+            const sampleIdVal = document.getElementById('sample-id').value || "sample_01";
+            
+            await addLog(`[SYSTEM] Initializing Snakemake DAG...`, 500);
+            
+            const uploadFile = async (inputId) => {
+                const fileInput = document.getElementById(inputId);
+                if (!fileInput.files || fileInput.files.length === 0) return null;
+                
+                const formData = new FormData();
+                formData.append("file", fileInput.files[0]);
+                
+                await addLog(`[UPLOAD] Uploading ${fileInput.files[0].name} to server...`, 100);
+                
+                const res = await fetch('/runs/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                return data.path;
+            };
+
+            let read1Path = null, read2Path = null, longReadsPath = null, assemblyFastaPath = null;
+            try {
+                if (startPoint === 'assembly') {
+                    assemblyFastaPath = await uploadFile('assembly-fasta');
+                } else {
+                    if (readType === 'short' || readType === 'hybrid') {
+                        read1Path = await uploadFile('read1');
+                        read2Path = await uploadFile('read2');
+                    }
+                    if (readType === 'long' || readType === 'hybrid') {
+                        longReadsPath = await uploadFile('long-reads');
+                    }
+                }
+            } catch (err) {
+                await addLog(`[ERROR] File upload failed: ${err.message}`, 100);
+                return;
+            }
+            
+            const buscoLineage = document.getElementById('busco_lineage').value;
+            const taxId = document.getElementById('tax-id-input').value || "4910";
+            
+            // Extract raw tool IDs
+            const selectedToolIds = [];
+            document.querySelectorAll('input[type="checkbox"]:checked').forEach(chk => {
+                selectedToolIds.push(chk.id.replace('chk-', ''));
+            });
+
+            // Build the SampleSheet payload
+            const payload = {
+                samples: [{
+                    sample_id: sampleIdVal,
+                    read_type: readType,
+                    read1: read1Path,
+                    read2: read2Path,
+                    long_reads: longReadsPath,
+                    assembly_fasta: assemblyFastaPath,
+                    expected_genome_size: "5m",
+                    organism_type: "bacterial"
+                }],
+                params: {
+                    starting_point: startPoint,
+                    busco_lineage: buscoLineage,
+                    taxid: taxId,
+                    selected_tools: selectedToolIds
+                }
+            };
+
+            await addLog(`[API] Triggering run via POST /runs with Sample ID: ${sampleId}`, 100);
+            
+            try {
+                const response = await fetch('/runs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    await addLog(`[SUCCESS] Run successfully queued in backend! Run ID: ${data.run_id}`, 100);
+                    const runId = data.run_id;
+                    currentRunId = runId;
+                    
+                    const stopBtn = document.getElementById('stop-btn');
+                    stopBtn.classList.remove('hidden');
+
+                    statusBox.textContent = 'RUNNING IN BACKGROUND';
+                    statusBox.className = 'px-2 py-1 bg-yellow-900 text-yellow-200 rounded text-xs animate-pulse';
+                    
+                    const progressContainer = document.getElementById('progress-container');
+                    const progressText = document.getElementById('progress-text');
+                    const progressBar = document.getElementById('progress-bar');
+                    const progressTime = document.getElementById('progress-time');
+                    progressContainer.classList.remove('hidden');
+                    
+                    // Display selected tools
+                    const selectedTools = [];
+                    document.querySelectorAll('input[type="checkbox"]:checked').forEach(chk => {
+                        let text = chk.nextElementSibling.textContent.split(' (')[0].trim();
+                        // Special handling for TaxID
+                        if (chk.id === 'chk-taxfilter') {
+                            const taxId = document.getElementById('tax-id-input').value;
+                            text += ` [TaxID: ${taxId}]`;
+                        }
+                        selectedTools.push(text);
+                    });
+                    const configSummary = document.getElementById('config-summary');
+                    configSummary.textContent = `[CONFIG] Active Tools: ${selectedTools.join(', ')}`;
+                    configSummary.classList.remove('hidden');
+                    
+                    await addLog(`[TRACKING] Connecting to live log stream for ${runId}...`, 500);
+                    
+                    // Poll for real logs
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const statusRes = await fetch(`/runs/${runId}`);
+                            const statusData = await statusRes.json();
+                            
+                            // Update Elapsed Time
+                            if (statusData.created_at) {
+                                const start = new Date(statusData.created_at + (statusData.created_at.endsWith('Z') ? '' : 'Z'));
+                                const now = (statusData.status === 'completed' || statusData.status === 'failed') 
+                                            ? new Date((statusData.finished_at ? statusData.finished_at + (statusData.finished_at.endsWith('Z') ? '' : 'Z') : new Date().toISOString())) 
+                                            : new Date();
+                                const diff = Math.floor((now - start) / 1000);
+                                const mins = Math.floor(diff / 60).toString().padStart(2, '0');
+                                const secs = (diff % 60).toString().padStart(2, '0');
+                                progressTime.textContent = `Elapsed: ${mins}:${secs}`;
+                            }
+
+                            const logRes = await fetch(`/runs/${runId}/logs`);
+                            if (logRes.ok) {
+                                const logData = await logRes.json();
+                                
+                                // Parse Progress: "11 of 15 steps (73%) done"
+                                const progressMatches = [...logData.logs.matchAll(/(\d+) of (\d+) steps \((\d+)%\) done/g)];
+                                if (progressMatches.length > 0) {
+                                    const latestMatch = progressMatches[progressMatches.length - 1];
+                                    const perc = latestMatch[3];
+                                    progressText.textContent = `${latestMatch[1]} of ${latestMatch[2]} steps (${perc}%) done`;
+                                    progressBar.style.width = `${perc}%`;
+                                }
+                                
+                                // Clear and render tail of logs
+                                const logs = logData.logs.split('\n');
+                                const tailLogs = logs.slice(Math.max(logs.length - 60, 0));
+                                
+                                logOut.innerHTML = '';
+                                tailLogs.forEach(line => {
+                                    if(line.trim() !== "") {
+                                        const p = document.createElement('div');
+                                        p.textContent = line;
+                                        logOut.appendChild(p);
+                                    }
+                                });
+                                logOut.scrollTop = logOut.scrollHeight;
+                            }
+                            
+                            if (statusData.status === 'completed') {
+                                clearInterval(pollInterval);
+                                progressBar.style.width = '100%';
+                                progressText.textContent = '100% Complete';
+                                stopBtn.classList.add('hidden');
+                                statusBox.textContent = 'COMPLETED';
+                                statusBox.className = 'px-2 py-1 bg-green-900 text-green-200 rounded text-xs';
+                                const p = document.createElement('div');
+                                p.textContent = `[SUCCESS] Pipeline finished successfully! Check data/results/${runId}/report for your files.`;
+                                p.className = 'text-green-400 font-bold mt-2';
+                                logOut.appendChild(p);
+                                logOut.scrollTop = logOut.scrollHeight;
+                            } else if (statusData.status === 'failed') {
+                                clearInterval(pollInterval);
+                                stopBtn.classList.add('hidden');
+                                statusBox.textContent = 'FAILED';
+                                statusBox.className = 'px-2 py-1 bg-red-900 text-red-200 rounded text-xs';
+                                const p = document.createElement('div');
+                                p.textContent = `[ERROR] Pipeline failed or stopped! Check terminal for details.`;
+                                p.className = 'text-red-400 font-bold mt-2';
+                                logOut.appendChild(p);
+                                logOut.scrollTop = logOut.scrollHeight;
+                            }
+                        } catch(e) {
+                            // ignore polling errors
+                        }
+                    }, 2000);
+
+                } else {
+                    await addLog(`[ERROR] Failed to queue run: ${JSON.stringify(data)}`, 100);
+                    statusBox.textContent = 'ERROR';
+                    statusBox.className = 'px-2 py-1 bg-red-900 text-red-200 rounded text-xs';
+                }
+            } catch (err) {
+                await addLog(`[ERROR] Network error: ${err.message}`, 100);
+                statusBox.textContent = 'ERROR';
+                statusBox.className = 'px-2 py-1 bg-red-900 text-red-200 rounded text-xs';
+            }
+        }
+        let currentRunId = null;
+
+        async function stopPipeline() {
+            if (!currentRunId) return;
+            if (!confirm("Are you sure you want to stop the running pipeline?")) return;
+            
+            try {
+                const res = await fetch(`/runs/${currentRunId}/stop`, { method: 'POST' });
+                if (res.ok) {
+                    const logOut = document.getElementById('log-output');
+                    const p = document.createElement('div');
+                    p.textContent = `[SYSTEM] Stop signal sent to pipeline backend...`;
+                    p.className = 'text-yellow-400 font-bold mt-2';
+                    logOut.appendChild(p);
+                    logOut.scrollTop = logOut.scrollHeight;
+                }
+            } catch (e) {
+                console.error("Failed to stop", e);
+            }
+        }
+    </script>
+</body>
+</html>

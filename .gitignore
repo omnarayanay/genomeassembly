@@ -1,0 +1,43 @@
+# Python & Virtual Environments
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Snakemake & Execution
+.snakemake/
+.snakemake_timestamp
+runs.sqlite
+
+# Data & Results (Do not upload large fastq/fasta files to GitHub!)
+data/
+DATA FASTA TO RUN/
+busco_downloads/
+.cache/
+.java/
+.parallel/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary scripts
+fix_js.py
+update_ui.py
+index.html.bak
