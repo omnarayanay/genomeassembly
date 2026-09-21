@@ -92,7 +92,15 @@ Ensure you have the following installed on your system:
 
 To run the pipeline, you need to start **both** the FastAPI web server and the background Snakemake worker.
 
-From your Ubuntu/Linux terminal (or WSL2 terminal), execute the following:
+#### 🪟 For Windows Users
+Simply double-click the `start.bat` file in the project directory. This script will automatically:
+1. Activate your virtual environment (if available).
+2. Start the FastAPI web server in the background.
+3. Open your default web browser to the GUI (**`http://127.0.0.1:8000`**).
+4. Start the background job worker in the console.
+
+#### 🐧 For Ubuntu / Linux Users
+From your terminal, execute the following:
 
 ```bash
 # 1. Navigate to the project directory
@@ -108,7 +116,7 @@ python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 &
 python -m api.worker
 ```
 
-Then, open your web browser (in Windows or Ubuntu) and navigate to:
+Then, open your web browser and navigate to:
 **`http://127.0.0.1:8000`**
 
 ### 4. Running the Pipeline
